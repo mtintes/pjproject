@@ -19,13 +19,13 @@ Changes:
 This is a copy of pjsua2_demo.cpp with some minor tweaks to make make a simple virtual phone.
 You may have to change audio ports # for your system.
 You can use ./pjsip-apps/bin/samples/.../auddemo to find your device numbers
- 
+
  */
 #include <pjsua2.hpp>
 #include <iostream>
 #include <pj/file_access.h>
 
-#define THIS_FILE       "pjsua2_demo.cpp"
+#define THIS_FILE "shatterphone.cpp"
 
 using namespace pj;
 
@@ -47,7 +47,7 @@ public:
 
 class MyAccount;
 
-class MyAudioMediaPort: public AudioMediaPort
+class MyAudioMediaPort : public AudioMediaPort
 {
     virtual void onFrameRequested(MediaFrame &frame)
     {
@@ -63,7 +63,6 @@ class MyAudioMediaPort: public AudioMediaPort
     }
 };
 
-
 class MyCall : public Call
 {
 private:
@@ -73,13 +72,13 @@ private:
 
 public:
     MyCall(Account &acc, int call_id = PJSUA_INVALID_ID)
-    : Call(acc, call_id)
+        : Call(acc, call_id)
     {
         wav_player = NULL;
         med_port = NULL;
         myAcc = (MyAccount *)&acc;
     }
-    
+
     ~MyCall()
     {
         if (wav_player)
@@ -87,7 +86,7 @@ public:
         if (med_port)
             delete med_port;
     }
-    
+
     virtual void onCallState(OnCallStateParam &prm);
     virtual void onCallTransferRequest(OnCallTransferRequestParam &prm);
     virtual void onCallReplaceRequest(OnCallReplaceRequestParam &prm);
@@ -98,10 +97,11 @@ class MyAccount : public Account
 {
 public:
     std::vector<Call *> calls;
-    
+
 public:
     MyAccount()
-    {}
+    {
+    }
 
     ~MyAccount()
     {
@@ -109,19 +109,20 @@ public:
                   << calls.size() << std::endl;
 
         for (std::vector<Call *>::iterator it = calls.begin();
-             it != calls.end(); )
+             it != calls.end();)
         {
             delete (*it);
             it = calls.erase(it);
         }
     }
-    
+
     void removeCall(Call *call)
     {
         for (std::vector<Call *>::iterator it = calls.begin();
              it != calls.end(); ++it)
         {
-            if (*it == call) {
+            if (*it == call)
+            {
                 calls.erase(it);
                 break;
             }
@@ -131,20 +132,23 @@ public:
     virtual void onRegState(OnRegStateParam &prm)
     {
         AccountInfo ai = getInfo();
-        std::cout << (ai.regIsActive? "*** Register: code=" : "*** Unregister: code=")
+        std::cout << (ai.regIsActive ? "*** Register: code=" : "*** Unregister: code=")
                   << prm.code << std::endl;
     }
-    
+
     virtual void onIncomingCall(OnIncomingCallParam &iprm)
     {
         Call *call = new MyCall(*this, iprm.callId);
         CallInfo ci = call->getInfo();
         CallOpParam prm;
-        
-        std::cout << "*** Incoming Call: " <<  ci.remoteUri << " ["
+
+        std::cout << "*** Incoming Call: " << ci.remoteUri << " ["
                   << ci.stateText << "]" << std::endl;
-        
+
         calls.push_back(call);
+        char line[10], *dummy;
+        dummy = fgets(line, sizeof(line), stdin);
+        PJ_UNUSED_ARG(dummy);
         prm.statusCode = (pjsip_status_code)200;
         call->answer(prm);
     }
@@ -155,13 +159,14 @@ void MyCall::onCallState(OnCallStateParam &prm)
     PJ_UNUSED_ARG(prm);
 
     CallInfo ci = getInfo();
-    std::cout << "*** Call: " <<  ci.remoteUri << " [" << ci.stateText
+    std::cout << "*** Call: " << ci.remoteUri << " [" << ci.stateText
               << "]" << std::endl;
-    
-    if (ci.state == PJSIP_INV_STATE_DISCONNECTED) {
-        //myAcc->removeCall(this);
+
+    if (ci.state == PJSIP_INV_STATE_DISCONNECTED)
+    {
+        // myAcc->removeCall(this);
         /* Delete the call */
-        //delete this;
+        // delete this;
     }
 }
 
@@ -169,18 +174,21 @@ void MyCall::onCallMediaState(OnCallMediaStateParam &prm)
 {
     PJ_UNUSED_ARG(prm);
     CallInfo ci = getInfo();
-    for (unsigned i = 0; i < ci.media.size(); i++) {
-        if (ci.media[i].type==PJMEDIA_TYPE_AUDIO && getMedia(i)) {
+    for (unsigned i = 0; i < ci.media.size(); i++)
+    {
+        if (ci.media[i].type == PJMEDIA_TYPE_AUDIO && getMedia(i))
+        {
             AudioMedia *aud_med = (AudioMedia *)getMedia(i);
 
             // Connect the call audio media to sound device
-            AudDevManager& mgr = Endpoint::instance().audDevManager();
+            AudDevManager &mgr = Endpoint::instance().audDevManager();
             aud_med->startTransmit(mgr.getPlaybackDevMedia());
             mgr.getCaptureDevMedia().startTransmit(*aud_med);
         }
     }
 
-
+    // This works for listing to the call and playing a wav file
+    // but not microphone
     // PJ_UNUSED_ARG(prm);
 
     // CallInfo ci = getInfo();
@@ -189,7 +197,6 @@ void MyCall::onCallMediaState(OnCallMediaStateParam &prm)
     //     MyEndpoint::instance().audDevManager().getPlaybackDevMedia();
     // AudioMedia& cap_dev_med =
     //     MyEndpoint::instance().audDevManager().getCaptureDevMedia();
-    
 
     // try {
     //     // Get the first audio media
@@ -245,12 +252,30 @@ void MyCall::onCallReplaceRequest(OnCallReplaceRequestParam &prm)
     prm.newCall = new MyCall(*myAcc);
 }
 
+string getPhoneInput()
+{
+    string phonenumber;
+    char line[10], *dummy;
+    std::cout << "Enter a phone number:" << std::endl;
+    bool noMoreCharacters = true;
+    while(noMoreCharacters){
+        char c = getchar();
+        if(c == '\n'){
+            noMoreCharacters = false;
+        } else {
+            phonenumber += c;
+        }
+    }
+    std::cout << "phone number:" << phonenumber << std::endl;
+    return phonenumber;
+}
+
 static void mainProg1(MyEndpoint &ep)
 {
     // Init library
     EpConfig ep_cfg;
     ep_cfg.logConfig.level = 5;
-    ep.libInit( ep_cfg );
+    ep.libInit(ep_cfg);
 
     // Transport
     TransportConfig tcfg;
@@ -275,14 +300,16 @@ static void mainProg1(MyEndpoint &ep)
 
     acc_cfg.sipConfig.authCreds.push_back(aci);
     MyAccount *acc(new MyAccount);
-    try {
+    try
+    {
         acc->create(acc_cfg);
-    } catch (...) {
+    }
+    catch (...)
+    {
         std::cout << "Adding account failed" << std::endl;
     }
-    
+
     pj_thread_sleep(2000);
-    
 
     // probably need to make this configurable
     MyEndpoint::instance().audDevManager().setCaptureDev(8);
@@ -291,70 +318,93 @@ static void mainProg1(MyEndpoint &ep)
 
     std::cout << "Device count: " << counter << std::endl;
     pj_status_t status;
-    for (int i=0; i<counter; ++i) {
-    pjmedia_aud_dev_info info;
+    for (int i = 0; i < counter; ++i)
+    {
+        pjmedia_aud_dev_info info;
 
-    status = pjmedia_aud_dev_get_info(i, &info);
-    if (status != PJ_SUCCESS)
-        continue;
+        status = pjmedia_aud_dev_get_info(i, &info);
+        if (status != PJ_SUCCESS)
+            continue;
 
-    PJ_LOG(3,(THIS_FILE," %2d: %s [%s] (%d/%d)",
-                i, info.driver, info.name, info.input_count, info.output_count));
+        PJ_LOG(3, (THIS_FILE, " %2d: %s [%s] (%d/%d)",
+                   i, info.driver, info.name, info.input_count, info.output_count));
     }
 
-
     // Make outgoing call
-    Call *call = new MyCall(*acc);
+    // Call *call = new MyCall(*acc);
 
-    acc->calls.push_back(call);
+    // acc->calls.push_back(call);
     CallOpParam prm(true);
     prm.opt.audioCount = 1;
     prm.opt.videoCount = 0;
-    call->makeCall("sip:02@192.168.0.131", prm);
-    
+    // call->makeCall("sip:02@192.168.0.131", prm);
+    bool onHook = true;
     // Hangup all calls
-    pj_thread_sleep(40000);
+    while (true)
+    {
+        char * val = getenv("ONHOOK");
+        if(val != NULL){
+            onHook = true;
+        } else {
+            onHook = false;
+        }
+
+        if (onHook) 
+        {
+            pj_thread_sleep(10);
+        }
+        else
+        {
+            string phonenumber = getPhoneInput();
+            Call *call = new MyCall(*acc);
+            acc->calls.push_back(call);
+            call->makeCall("sip:"+phonenumber+"@192.168.0.131", prm);
+        }
+    }
     ep.hangupAllCalls();
-    pj_thread_sleep(40000);
-    
+
     // Destroy library
     std::cout << "*** PJSUA2 SHUTTING DOWN ***" << std::endl;
     delete acc; /* Will delete all calls too */
 }
 
-
-extern "C"
-int main()
+extern "C" int main()
 {
     int ret = 0;
     MyEndpoint ep;
 
-    try {
+    try
+    {
         ep.libCreate();
 
         mainProg1(ep);
 
-
         ret = PJ_SUCCESS;
-    } catch (Error & err) {
+    }
+    catch (Error &err)
+    {
         std::cout << "Exception: " << err.info() << std::endl;
         ret = 1;
     }
 
-    try {
+    try
+    {
         ep.libDestroy();
-    } catch(Error &err) {
+    }
+    catch (Error &err)
+    {
         std::cout << "Exception: " << err.info() << std::endl;
         ret = 1;
     }
 
-    if (ret == PJ_SUCCESS) {
+    if (ret == PJ_SUCCESS)
+    {
         std::cout << "Success" << std::endl;
-    } else {
+    }
+    else
+    {
         std::cout << "Error Found" << std::endl;
     }
 
     return ret;
 }
-
-
