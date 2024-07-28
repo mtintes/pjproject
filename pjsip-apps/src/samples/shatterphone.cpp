@@ -272,6 +272,22 @@ string getPhoneInput()
 
 static void mainProg1(MyEndpoint &ep)
 {
+    char * asteriskIp = getenv("ASTERISK_IP");
+    if(asteriskIp == NULL){
+        std::cout << "Please set the ASTERISK_IP environment variable" << std::endl;
+        return;
+    }
+    char * sipId = getenv("SIP_ID");
+    if(sipId == NULL){
+        std::cout << "Please set the SIP_ID environment variable" << std::endl;
+        return;
+    }
+    char * sipPassword = getenv("SIP_PASSWORD");
+    if(sipPassword == NULL){
+        std::cout << "Please set the SIP_PASSWORD environment variable" << std::endl;
+        return;
+    }
+
     // Init library
     EpConfig ep_cfg;
     ep_cfg.logConfig.level = 5;
@@ -288,14 +304,14 @@ static void mainProg1(MyEndpoint &ep)
 
     // Add account
     AccountConfig acc_cfg;
-    acc_cfg.idUri = "sip:255@192.168.0.131";
-    acc_cfg.regConfig.registrarUri = "sip:192.168.0.131";
+    acc_cfg.idUri = "sip: "+ string(sipId) +" @" + string(asteriskIp);
+    acc_cfg.regConfig.registrarUri = "sip:" + string(asteriskIp);
 
 #if PJSIP_HAS_DIGEST_AKA_AUTH
     AuthCredInfo aci("Digest", "*", "test", PJSIP_CRED_DATA_EXT_AKA | PJSIP_CRED_DATA_PLAIN_PASSWD, "passwd");
     aci.akaK = "passwd";
 #else
-    AuthCredInfo aci("digest", "*", "255", 0, "7b69a01dfb7ccb6a26d3b68097f2f18d");
+    AuthCredInfo aci("digest", "*", string(sipId), 0, string(sipPassword));
 #endif
 
     acc_cfg.sipConfig.authCreds.push_back(aci);
@@ -330,14 +346,10 @@ static void mainProg1(MyEndpoint &ep)
                    i, info.driver, info.name, info.input_count, info.output_count));
     }
 
-    // Make outgoing call
-    // Call *call = new MyCall(*acc);
-
-    // acc->calls.push_back(call);
     CallOpParam prm(true);
     prm.opt.audioCount = 1;
     prm.opt.videoCount = 0;
-    // call->makeCall("sip:02@192.168.0.131", prm);
+
     bool onHook = true;
     // Hangup all calls
     while (true)
@@ -358,7 +370,7 @@ static void mainProg1(MyEndpoint &ep)
             string phonenumber = getPhoneInput();
             Call *call = new MyCall(*acc);
             acc->calls.push_back(call);
-            call->makeCall("sip:"+phonenumber+"@192.168.0.131", prm);
+            call->makeCall("sip:"+phonenumber+"@" + string(asteriskIp), prm);
         }
     }
     ep.hangupAllCalls();
