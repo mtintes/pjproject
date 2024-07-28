@@ -49,7 +49,8 @@ SAMPLES := auddemo \
 	   vid_streamutil
 
 PJSUA2_SAMPLES := pjsua2_demo \
-		pjsua2_hello_reg
+		pjsua2_hello_reg \
+		shatterphone
 
 ifeq ($(EXCLUDE_APP),0)
 EXES := $(foreach file, $(SAMPLES), $(file)$(HOST_EXE))
